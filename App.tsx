@@ -15,7 +15,7 @@ import {
 
 const { width, height } = Dimensions.get('window');
 
-// Language translations
+// Language translations with fun result variations
 const translations = {
   en: {
     title: "Can't Decide?",
@@ -27,12 +27,13 @@ const translations = {
     sound: "Sound Effects",
     vibration: "Vibration",
     darkMode: "Dark Mode",
-    shakeToDecide: "Shake your phone to decide!",
+    tapHint: "Tap the button to decide!",
     choices2: "2 choices",
     choices3: "3 choices",
-    yes: "YES",
-    no: "NO",
-    dontKnow: "I DON'T KNOW",
+    // Fun variations for results
+    yesOptions: ["YES!", "Absolutely!", "Go for it!", "Do it!", "YES"],
+    noOptions: ["NO", "Nah", "Not today", "Skip it", "NO"],
+    dontKnowOptions: ["I DON'T KNOW", "Maybe later?", "Hmm...", "Ask me tomorrow", "¯\\_(ツ)_/¯"],
     choicesDisplay: "Yes • No",
     choicesDisplay3: "Yes • No • I Don't Know",
     languages: {
@@ -50,12 +51,13 @@ const translations = {
     sound: "Звуковые эффекты",
     vibration: "Вибрация",
     darkMode: "Темная тема",
-    shakeToDecide: "Встряхните телефон, чтобы решить!",
+    tapHint: "Нажмите кнопку, чтобы решить!",
     choices2: "2 варианта",
     choices3: "3 варианта",
-    yes: "ДА",
-    no: "НЕТ",
-    dontKnow: "НЕ ЗНАЮ",
+    // Fun variations for Russian
+    yesOptions: ["ДА!", "Конечно!", "Давайте!", "Делайте!", "ДА"],
+    noOptions: ["НЕТ", "Не-а", "Не сегодня", "Пропустите", "НЕТ"],
+    dontKnowOptions: ["НЕ ЗНАЮ", "Может позже?", "Хм...", "Спросите завтра", "¯\\_(ツ)_/¯"],
     choicesDisplay: "Да • Нет",
     choicesDisplay3: "Да • Нет • Не знаю",
     languages: {
@@ -80,40 +82,119 @@ const App = () => {
   const buttonScale = useRef(new Animated.Value(1)).current;
   const resultOpacity = useRef(new Animated.Value(0)).current;
   const resultScale = useRef(new Animated.Value(0.5)).current;
-  const confettiAnimation = useRef(new Animated.Value(0)).current;
   const shakeAnimation = useRef(new Animated.Value(0)).current;
   const backgroundAnimation = useRef(new Animated.Value(0)).current;
-  
-
 
   const t = translations[language];
 
-  // Note: Shake detection temporarily disabled - we'll add it back with react-native-shake
-  // For now, the app works perfectly with button taps
+  // ALL FUNCTIONS USING FUNCTION DECLARATIONS (HOISTED)
+  function savePreferences() {
+    // In a real app, save to AsyncStorage
+    console.log('Preferences saved');
+  }
 
-  // Language selection modal on first launch
-  useEffect(() => {
-    if (isFirstLaunch) {
-      setTimeout(() => setShowSettings(true), 1000);
-    }
-  }, [isFirstLaunch]);
-
-  const playSound = (type) => {
+  function playSound(type) {
     if (!soundEnabled) return;
-    // Note: For actual sound, you'd need react-native-sound or expo-av
-    // This is a placeholder for sound functionality
-    console.log(`Playing ${type} sound`);
-  };
-
-  const triggerVibration = () => {
+    
+    // Enhanced haptic feedback
     if (vibrationEnabled) {
-      Vibration.vibrate(100);
+      switch (type) {
+        case 'yes':
+          Vibration.vibrate([50, 30, 50]); // Success pattern
+          break;
+        case 'no':
+          Vibration.vibrate([100, 50, 100]); // Negative pattern
+          break;
+        default:
+          Vibration.vibrate(100); // Default
+      }
     }
-  };
+    
+    // Placeholder for actual sound - you'd add react-native-sound here
+    console.log(`Playing ${type} sound with enhanced haptics`);
+  }
 
+  function triggerVibration() {
+    if (vibrationEnabled) {
+      Vibration.vibrate(50);
+    }
+  }
 
+  function getRandomResult() {
+    const yesOptions = t.yesOptions;
+    const noOptions = t.noOptions;
+    const dontKnowOptions = t.dontKnowOptions;
+    
+    if (useThreeChoices) {
+      const allOptions = [...yesOptions, ...noOptions, ...dontKnowOptions];
+      return allOptions[Math.floor(Math.random() * allOptions.length)];
+    } else {
+      const allOptions = [...yesOptions, ...noOptions];
+      return allOptions[Math.floor(Math.random() * allOptions.length)];
+    }
+  }
 
-  const makeDecision = () => {
+  function getResultColor() {
+    if (!result) return '#2196F3';
+    
+    // Check if result is a "yes" type
+    if (t.yesOptions.some(option => result.includes(option.split('!')[0]) || result.includes('YES') || result.includes('ДА'))) {
+      return '#4CAF50';
+    }
+    // Check if result is a "no" type
+    if (t.noOptions.some(option => result.includes(option.split(' ')[0]) || result.includes('NO') || result.includes('НЕТ'))) {
+      return '#F44336';
+    }
+    // Must be "don't know" type
+    return '#FF9800';
+  }
+
+  function getTheme() {
+    if (darkMode) {
+      return {
+        background: '#121212',
+        surface: '#1E1E1E',
+        text: '#FFFFFF',
+        textSecondary: '#AAAAAA',
+        accent: '#BB86FC',
+      };
+    }
+    return {
+      background: '#F5F5F5',
+      surface: '#FFFFFF',
+      text: '#333333',
+      textSecondary: '#666666',
+      accent: '#2196F3',
+    };
+  }
+
+  function updateLanguage(newLang) {
+    setLanguage(newLang);
+    savePreferences();
+  }
+
+  function updateDarkMode(value) {
+    setDarkMode(value);
+    savePreferences();
+  }
+
+  function updateSound(value) {
+    setSoundEnabled(value);
+    savePreferences();
+  }
+
+  function updateVibration(value) {
+    setVibrationEnabled(value);
+    savePreferences();
+  }
+
+  function toggleChoices() {
+    playSound('toggle');
+    setUseThreeChoices(!useThreeChoices);
+    savePreferences();
+  }
+
+  function makeDecision() {
     if (showResult) return;
 
     // Button shake animation
@@ -173,16 +254,12 @@ const App = () => {
       }),
     ]).start();
 
-    // Get random result
-    const choices2 = [t.yes, t.no];
-    const choices3 = [t.yes, t.no, t.dontKnow];
-    const options = useThreeChoices ? choices3 : choices2;
-    const randomChoice = options[Math.floor(Math.random() * options.length)];
+    // Get random result with fun variations
+    const randomChoice = getRandomResult();
     
     setTimeout(() => {
       setResult(randomChoice);
       setShowResult(true);
-      triggerVibration();
       playSound(randomChoice.toLowerCase());
 
       // Result animation with rotation
@@ -200,23 +277,19 @@ const App = () => {
         }),
       ]).start();
     }, 800);
-  };
+  }
 
-  const resetDecision = () => {
+  function resetDecision() {
     // Reset current result with quick animation
     Animated.timing(resultScale, {
       toValue: 0.8,
       duration: 150,
       useNativeDriver: true,
     }).start(() => {
-      // Get new random result
-      const choices2 = [t.yes, t.no];
-      const choices3 = [t.yes, t.no, t.dontKnow];
-      const options = useThreeChoices ? choices3 : choices2;
-      const randomChoice = options[Math.floor(Math.random() * options.length)];
+      // Get new random result with variations
+      const randomChoice = getRandomResult();
       
       setResult(randomChoice);
-      triggerVibration();
       playSound(randomChoice.toLowerCase());
 
       // Animate new result
@@ -227,41 +300,25 @@ const App = () => {
         useNativeDriver: true,
       }).start();
     });
-  };
+  }
 
-  const toggleChoices = () => {
-    playSound('toggle');
-    triggerVibration();
-    setUseThreeChoices(!useThreeChoices);
-  };
-
-  const getResultColor = () => {
-    switch (result) {
-      case t.yes: return '#4CAF50';
-      case t.no: return '#F44336';
-      case t.dontKnow: return '#FF9800';
-      default: return '#2196F3';
-    }
-  };
-
-  const getTheme = () => {
-    if (darkMode) {
-      return {
-        background: '#121212',
-        surface: '#1E1E1E',
-        text: '#FFFFFF',
-        textSecondary: '#AAAAAA',
-        accent: '#BB86FC',
-      };
-    }
-    return {
-      background: '#F5F5F5',
-      surface: '#FFFFFF',
-      text: '#333333',
-      textSecondary: '#666666',
-      accent: '#2196F3',
+  // Load saved preferences
+  useEffect(() => {
+    // In a real app, you'd load from AsyncStorage here
+    // For now, we'll just use the defaults
+    const loadPreferences = () => {
+      // Simulated loading - in real app use AsyncStorage
+      console.log('Preferences loaded');
     };
-  };
+    loadPreferences();
+  }, []);
+
+  // Language selection modal on first launch
+  useEffect(() => {
+    if (isFirstLaunch) {
+      setTimeout(() => setShowSettings(true), 1000);
+    }
+  }, [isFirstLaunch]);
 
   const theme = getTheme();
 
@@ -277,8 +334,6 @@ const App = () => {
         backgroundColor={theme.background}
       />
       
-
-
       <SafeAreaView style={styles.safeArea}>
         {/* Top Bar */}
         <View style={styles.topBar}>
@@ -306,7 +361,7 @@ const App = () => {
           
           {!showResult && (
             <Text style={[styles.shakeHint, { color: theme.textSecondary }]}>
-              Tap the button to decide!
+              {t.tapHint}
             </Text>
           )}
 
@@ -358,7 +413,7 @@ const App = () => {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-            {t.choices}: {useThreeChoices ? t.choicesDisplay3 : t.choicesDisplay}
+            {t.choices} {useThreeChoices ? t.choicesDisplay3 : t.choicesDisplay}
           </Text>
         </View>
       </SafeAreaView>
@@ -387,7 +442,7 @@ const App = () => {
                     language === 'en' && { backgroundColor: theme.accent },
                     { borderColor: theme.accent }
                   ]}
-                  onPress={() => setLanguage('en')}
+                  onPress={() => updateLanguage('en')}
                 >
                   <Text style={[
                     styles.languageButtonText,
@@ -402,7 +457,7 @@ const App = () => {
                     language === 'ru' && { backgroundColor: theme.accent },
                     { borderColor: theme.accent }
                   ]}
-                  onPress={() => setLanguage('ru')}
+                  onPress={() => updateLanguage('ru')}
                 >
                   <Text style={[
                     styles.languageButtonText,
@@ -417,17 +472,17 @@ const App = () => {
             {/* Settings Switches */}
             <View style={styles.settingItem}>
               <Text style={[styles.settingLabel, { color: theme.text }]}>{t.sound}</Text>
-              <Switch value={soundEnabled} onValueChange={setSoundEnabled} />
+              <Switch value={soundEnabled} onValueChange={updateSound} />
             </View>
 
             <View style={styles.settingItem}>
               <Text style={[styles.settingLabel, { color: theme.text }]}>{t.vibration}</Text>
-              <Switch value={vibrationEnabled} onValueChange={setVibrationEnabled} />
+              <Switch value={vibrationEnabled} onValueChange={updateVibration} />
             </View>
 
             <View style={styles.settingItem}>
               <Text style={[styles.settingLabel, { color: theme.text }]}>{t.darkMode}</Text>
-              <Switch value={darkMode} onValueChange={setDarkMode} />
+              <Switch value={darkMode} onValueChange={updateDarkMode} />
             </View>
 
             <TouchableOpacity
@@ -567,7 +622,6 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 14,
   },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

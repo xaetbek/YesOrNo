@@ -11,9 +11,7 @@ import {
   Switch,
   Modal,
   Vibration,
-  Alert,
 } from 'react-native';
-import { Accelerometer } from 'expo-sensors';
 
 const { width, height } = Dimensions.get('window');
 
@@ -86,40 +84,12 @@ const App = () => {
   const shakeAnimation = useRef(new Animated.Value(0)).current;
   const backgroundAnimation = useRef(new Animated.Value(0)).current;
   
-  // Confetti particles
-  const [confettiParticles] = useState(() =>
-    Array.from({ length: 50 }, (_, i) => ({
-      id: i,
-      x: Math.random() * width,
-      y: -20,
-      color: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8'][Math.floor(Math.random() * 5)],
-      animatedValue: new Animated.Value(0),
-    }))
-  );
+
 
   const t = translations[language];
 
-  // Accelerometer for shake detection
-  useEffect(() => {
-    let subscription;
-    
-    const startAccelerometer = async () => {
-      try {
-        await Accelerometer.setUpdateInterval(100);
-        subscription = Accelerometer.addListener(({ x, y, z }) => {
-          const acceleration = Math.sqrt(x * x + y * y + z * z);
-          if (acceleration > 2.5 && !showResult) {
-            makeDecision();
-          }
-        });
-      } catch (error) {
-        console.log('Accelerometer not available');
-      }
-    };
-
-    startAccelerometer();
-    return () => subscription?.remove();
-  }, [showResult]);
+  // Note: Shake detection temporarily disabled - we'll add it back with react-native-shake
+  // For now, the app works perfectly with button taps
 
   // Language selection modal on first launch
   useEffect(() => {
@@ -141,16 +111,7 @@ const App = () => {
     }
   };
 
-  const createConfetti = () => {
-    confettiParticles.forEach(particle => {
-      particle.animatedValue.setValue(0);
-      Animated.timing(particle.animatedValue, {
-        toValue: 1,
-        duration: 3000 + Math.random() * 2000,
-        useNativeDriver: true,
-      }).start();
-    });
-  };
+
 
   const makeDecision = () => {
     if (showResult) return;
@@ -223,7 +184,6 @@ const App = () => {
       setShowResult(true);
       triggerVibration();
       playSound(randomChoice.toLowerCase());
-      createConfetti();
 
       // Result animation with rotation
       Animated.parallel([
@@ -243,24 +203,29 @@ const App = () => {
   };
 
   const resetDecision = () => {
-    playSound('reset');
-    
-    // Reset animations
-    Animated.parallel([
-      Animated.timing(resultOpacity, {
-        toValue: 0,
-        duration: 300,
+    // Reset current result with quick animation
+    Animated.timing(resultScale, {
+      toValue: 0.8,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      // Get new random result
+      const choices2 = [t.yes, t.no];
+      const choices3 = [t.yes, t.no, t.dontKnow];
+      const options = useThreeChoices ? choices3 : choices2;
+      const randomChoice = options[Math.floor(Math.random() * options.length)];
+      
+      setResult(randomChoice);
+      triggerVibration();
+      playSound(randomChoice.toLowerCase());
+
+      // Animate new result
+      Animated.spring(resultScale, {
+        toValue: 1,
+        tension: 50,
+        friction: 4,
         useNativeDriver: true,
-      }),
-      Animated.timing(resultScale, {
-        toValue: 0.5,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setShowResult(false);
-      setResult(null);
-      confettiParticles.forEach(particle => particle.animatedValue.setValue(0));
+      }).start();
     });
   };
 
@@ -312,33 +277,7 @@ const App = () => {
         backgroundColor={theme.background}
       />
       
-      {/* Confetti */}
-      {showResult && confettiParticles.map(particle => (
-        <Animated.View
-          key={particle.id}
-          style={[
-            styles.confetti,
-            {
-              backgroundColor: particle.color,
-              left: particle.x,
-              transform: [
-                {
-                  translateY: particle.animatedValue.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-20, height + 100],
-                  }),
-                },
-                {
-                  rotate: particle.animatedValue.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0deg', '720deg'],
-                  }),
-                },
-              ],
-            },
-          ]}
-        />
-      ))}
+
 
       <SafeAreaView style={styles.safeArea}>
         {/* Top Bar */}
@@ -367,7 +306,7 @@ const App = () => {
           
           {!showResult && (
             <Text style={[styles.shakeHint, { color: theme.textSecondary }]}>
-              {t.shakeToDecide}
+              Tap the button to decide!
             </Text>
           )}
 
@@ -628,12 +567,7 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 14,
   },
-  confetti: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
